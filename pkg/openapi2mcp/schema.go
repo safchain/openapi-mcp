@@ -187,18 +187,36 @@ func BuildInputSchema(params openapi3.Parameters, requestBody *openapi3.RequestB
 			if idx := strings.IndexByte(mtName, ';'); idx > 0 {
 				baseMT = strings.TrimSpace(mtName[:idx])
 			}
-			if baseMT != "application/json" && baseMT != "application/vnd.api+json" {
-				fmt.Fprintf(os.Stderr, "[WARN] Request body uses media type '%s'. Only 'application/json' and 'application/vnd.api+json' are fully supported.\n", mtName)
+			if baseMT != "application/json" && baseMT != "application/vnd.api+json" && baseMT != "application/octet-stream" {
+				fmt.Fprintf(os.Stderr, "[WARN] Request body uses media type '%s'. Only 'application/json', 'application/vnd.api+json' and 'application/octet-stream' are fully supported.\n", mtName)
 			}
 		}
+
 		// Try application/json first, then application/vnd.api+json (including with parameters)
 		mt := getContentByType(requestBody.Value.Content, "application/json")
+		kind := "application/json"
+
 		if mt == nil {
 			mt = getContentByType(requestBody.Value.Content, "application/vnd.api+json")
+			kind = "application/vnd.api+json"
 		}
+		if mt == nil {
+			mt = getContentByType(requestBody.Value.Content, "application/octet-stream")
+			kind = "application/octet-stream"
+		}
+
 		if mt != nil && mt.Schema != nil && mt.Schema.Value != nil {
 			bodyProp := extractProperty(mt.Schema)
-			bodyProp["description"] = "The JSON request body."
+			bodyProp["description"] = requestBody.Value.Description
+
+			if bodyProp["description"] == "" {
+				if kind == "application/octet-stream" {
+					bodyProp["description"] = "The text request body."
+				} else {
+					bodyProp["description"] = "The JSON request body."
+				}
+			}
+
 			properties["requestBody"] = bodyProp
 			if requestBody.Value.Required {
 				required = append(required, "requestBody")
