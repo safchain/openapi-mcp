@@ -97,6 +97,13 @@ func NewServer(name, version string, doc *openapi3.T) *mcpserver.MCPServer {
 	return srv
 }
 
+func NewServerWithOpts(name, version string, doc *openapi3.T, opts *ToolGenOptions) *mcpserver.MCPServer {
+	ops := ExtractOpenAPIOperations(doc)
+	srv := mcpserver.NewMCPServer(name, version)
+	RegisterOpenAPITools(srv, ops, doc, opts)
+	return srv
+}
+
 // NewServerWithOps creates a new MCP server, registers the provided OpenAPI operations, and returns the server.
 // Example usage for NewServerWithOps:
 //
