@@ -1136,16 +1136,29 @@ func RegisterOpenAPITools(server *mcpserver.MCPServer, ops []OpenAPIOperation, d
 				mt := getContentByType(opCopy.RequestBody.Value.Content, "application/json")
 				if mt != nil {
 					requestContentType = "application/json"
-				} else {
+				}
+				if mt == nil {
 					mt = getContentByType(opCopy.RequestBody.Value.Content, "application/vnd.api+json")
 					if mt != nil {
 						requestContentType = "application/vnd.api+json"
 					}
 				}
+				if mt == nil {
+					mt = getContentByType(opCopy.RequestBody.Value.Content, "application/octet-stream")
+					if mt != nil {
+						requestContentType = "application/octet-stream"
+					}
+				}
 
 				if mt != nil && mt.Schema != nil && mt.Schema.Value != nil {
-					if v, ok := args["requestBody"]; ok && v != nil {
-						body, _ = json.Marshal(v)
+					if requestContentType == "application/json" || requestContentType == "application/vnd.api+json" {
+						if v, ok := args["requestBody"]; ok && v != nil {
+							body, _ = json.Marshal(v)
+						}
+					} else {
+						if v, ok := args["requestBody"]; ok && v != nil {
+							body = []byte(args["requestBody"].(string))
+						}
 					}
 				}
 			}
@@ -1159,7 +1172,7 @@ func RegisterOpenAPITools(server *mcpserver.MCPServer, ops []OpenAPIOperation, d
 				httpReq.Header.Set("Content-Type", requestContentType)
 			}
 			// Set Accept header to accept both JSON and JSON:API responses
-			httpReq.Header.Set("Accept", "application/json, application/vnd.api+json")
+			httpReq.Header.Set("Accept", "application/json, application/vnd.api+json, application/octet-stream")
 			// --- AUTH HANDLING: inject per-operation security requirements ---
 			// For each security requirement object, try to satisfy at least one scheme
 			securitySatisfied := false
